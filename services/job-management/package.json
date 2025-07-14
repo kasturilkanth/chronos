@@ -1,0 +1,24 @@
+{
+  "name": "job-management-service",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "sequelize db:migrate",
+    "dev": "node src/index.js",
+    "start": "node src/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@shared/mysql": "file:@shared/mysql",
+    "@shared/middlewares": "file:@shared/middlewares",
+    "express": "^5.1.0",
+    "express-validator": "^7.2.1"
+  },
+  "devDependencies": {
+    "jest": "30.0.0-beta.3",
+    "supertest": "^7.1.1"
+  }
+}

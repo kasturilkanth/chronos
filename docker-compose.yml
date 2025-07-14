@@ -1,0 +1,225 @@
+services:
+  api-gateway:
+    build: ./gateway
+    container_name: api-gateway
+    environment:
+      - PORT=8080
+      - JOB_SERVICE_URL=http://job-management-service:3001
+      - MONITORING_SERVICE_URL=http://monitoring-service:3002
+    ports:
+      - "80:8080"
+
+  job-management-service:
+    build: 
+      context: .
+      dockerfile: ./services/job-management/Dockerfile
+    container_name: job-management-service
+    environment:
+      - PORT=3001
+      - DB_NAME=job_scheduler
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./services/job-management:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - redis
+
+  monitoring-service:
+    build: 
+      context: .
+      dockerfile: ./services/monitoring/Dockerfile
+    container_name: monitoring-service
+    environment:
+      - PORT=3002
+      - DB_NAME=job_scheduler
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - DB_LOGS_NAME=job_logs
+      - DB_NOTIFICATION_NAME=job_notifications
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./services/monitoring:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - kafka
+
+  log-service:
+    build: 
+      context: .
+      dockerfile: ./services/log/Dockerfile
+    container_name: log-service
+    environment:
+      - PORT=3003
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - DB_LOGS_NAME=job_logs
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./services/log:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - kafka
+
+  cron-service:
+    build: 
+      context: .
+      dockerfile: ./services/cron/Dockerfile
+    container_name: cron-service
+    environment:
+      - DB_NAME=job_scheduler
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/cron:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+
+  scheduler-service:
+    build: 
+      context: .
+      dockerfile: ./services/scheduler/Dockerfile
+    container_name: scheduler-service
+    environment:
+      - DB_NAME=job_scheduler
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/scheduler:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - kafka
+
+  worker-service:
+    build: 
+      context: .
+      dockerfile: ./services/worker/Dockerfile
+    container_name: worker-service
+    environment:
+      - DB_NAME=job_scheduler
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/worker:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - redis
+      - kafka
+
+  retry-service:
+    build: 
+      context: .
+      dockerfile: ./services/retry/Dockerfile
+    container_name: retry-service
+    environment:
+      - DB_NAME=job_scheduler
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_HOST=mysql
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/retry:/app
+      - ./@shared:/app/@shared
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - redis
+      - kafka
+
+  mysql:
+    build: ./infra/mysql
+    container_name: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=job_scheduler
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports:
+      # - "9092:9092"       # External client connections
+      - "9093:9093"       # Internal communication
+    environment:
+      CLUSTER_ID: kLLD2O2eTE2kksBdz7fQlw
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # Assign DIFFERENT ports for each listener
+      KAFKA_LISTENERS: CONTROLLER://kafka:9093,BROKER://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: BROKER://kafka:9092
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,BROKER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - ./kafka-data:/tmp/kraft-combined-logs
+
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+      PMA_PORT: 3306
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8082:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+
+volumes:
+  mysql_data:
+  redis_data:

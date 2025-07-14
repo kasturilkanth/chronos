@@ -1,0 +1,14 @@
+{
+  "name": "@shared/mysql",
+  "version": "1.0.0",
+  "main": "config/connection.js",
+  "dependencies": {
+    "@shared/redis": "file:../redis",
+    "cron-parser": "^5.2.0",
+    "sequelize": "^6.37.7",
+    "mysql2": "^3.14.1"
+  },
+  "devDependencies": {
+    "sequelize-cli": "^6.6.3"
+  }
+}

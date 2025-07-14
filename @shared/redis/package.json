@@ -1,0 +1,8 @@
+{
+  "name": "@shared/redis",
+  "version": "1.0.0",
+  "main": "connection.js",
+  "dependencies": {
+    "redis": "^5.1.0"
+  }
+}
